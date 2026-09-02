@@ -75,6 +75,21 @@ const C = {
   border: "#E4E4F0", bg: "#F7F7FB",
 };
 
+const UI_REFINEMENT_CSS = `
+  :root { color-scheme: light; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: #F7F7FB; }
+  button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible { outline: 3px solid rgba(79,70,229,.28); outline-offset: 2px; }
+  .vigilis-surface { box-shadow: 0 1px 2px rgba(15,23,42,.03), 0 10px 30px rgba(49,46,129,.05); }
+  .vigilis-grid { background-image: linear-gradient(rgba(79,70,229,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(79,70,229,.035) 1px, transparent 1px); background-size: 28px 28px; }
+  .vigilis-card-hover { transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+  .vigilis-card-hover:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(15,23,42,.08); border-color: #C7C8F5 !important; }
+  .vigilis-metric { position: relative; overflow: hidden; }
+  .vigilis-metric:after { content: ""; position:absolute; width:70px; height:70px; right:-28px; top:-28px; border-radius:999px; background: currentColor; opacity:.045; }
+  @media (max-width: 640px) { .vigilis-page { padding-left:16px !important; padding-right:16px !important; } .vigilis-detail-card { padding:20px !important; border-radius:16px !important; } .vigilis-title { font-size:20px !important; } }
+  @media print { body { background:#fff !important; } }
+`;
+
 // ---------------------------------------------------------------------------
 // Reference data
 // ---------------------------------------------------------------------------
@@ -339,11 +354,10 @@ function maskReporter(r) {
 // ---------------------------------------------------------------------------
 async function translateAndExtract(transcript, languageLabel, stepType) {
   const schema = SCHEMAS[stepType];
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const res = await fetch("/api/ai", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "claude-sonnet-4-6",
       max_tokens: 1000,
       messages: [
         {
@@ -375,19 +389,17 @@ async function translateAndExtract(transcript, languageLabel, stepType) {
 }
 
 async function askClaudeText(prompt) {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const res = await fetch("/api/ai", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "claude-sonnet-4-6",
       max_tokens: 1000,
       messages: [{ role: "user", content: prompt }],
     }),
   });
+  if (!res.ok) throw new Error(`AI request failed (${res.status})`);
   const data = await res.json();
-  const textBlock = (data.content || []).find((b) => b.type === "text");
-  if (!textBlock) throw new Error("No response");
-  return textBlock.text.trim();
+  return (data.text || "").trim();
 }
 
 // ---------------------------------------------------------------------------
@@ -419,19 +431,18 @@ async function screenLiterature({ drugName, sourceUrl, pastedText }) {
     `If nothing credible turns up, set "found": false and explain briefly in "notes". Do not fabricate a source, a URL, or ` +
     `statistics. Never reproduce more than a short paraphrase of any source.`;
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const res = await fetch("/api/ai", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "claude-sonnet-4-6",
       max_tokens: 1200,
       messages: [{ role: "user", content: prompt }],
-      ...(hasOwnText ? {} : { tools: [{ type: "web_search_20250305", name: "web_search" }] }),
+      useWebSearch: !hasOwnText,
     }),
   });
+  if (!res.ok) throw new Error(`AI request failed (${res.status})`);
   const data = await res.json();
-  const textBlocks = (data.content || []).filter((b) => b.type === "text");
-  const finalText = textBlocks.length ? textBlocks[textBlocks.length - 1].text : "";
+  const finalText = data.text || "";
   const cleaned = finalText.replace(/```json|```/g, "").trim();
   const start = cleaned.indexOf("{"), end = cleaned.lastIndexOf("}");
   const jsonStr = start >= 0 && end >= 0 ? cleaned.slice(start, end + 1) : cleaned;
@@ -1247,7 +1258,7 @@ ${eventsXml}
 
   return (
     <div className="min-h-screen font-sans text-[#0F172A]" style={{ background: C.bg }}>
-      <style>{FONT_IMPORT}</style>
+      <style>{FONT_IMPORT + UI_REFINEMENT_CSS}</style>
       <DemoDisclaimerBanner />
       {view !== "wizard" && !record && <TopNav view={view} setView={setView} count={history.length} signalCount={signalData.signals.length} syncStatus={syncStatus} onLogout={() => setAuthed(false)} isAdmin={isAdmin} onOpenAdminGate={() => (isAdmin ? setView("admin") : setAdminGateOpen(true))} lockdown={lockdown} />}
       {adminGateOpen && (
@@ -1304,10 +1315,17 @@ function Dashboard({ history, signalData, onNew, onOpenLog, onOpenDemo, onOpenSi
   }, [history]);
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-8">
-      <div className="mb-7">
+    <div className="max-w-6xl mx-auto px-6 py-8 vigilis-page vigilis-grid">
+      <div className="rounded-2xl border bg-white/90 p-5 sm:p-6 mb-6 vigilis-surface" style={{borderColor:C.border}}>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <div className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[.14em] px-2 py-1 rounded-full mb-2" style={{background:C.emeraldSoft,color:C.emeraldDeeper}}><ShieldCheck size={11}/> Pharmacovigilance workspace</div>
+            <h1 className="text-[24px] font-bold vigilis-title"
         <h1 className="text-[22px] font-bold" style={{ color: C.indigoDeeper }}>Overview</h1>
-        <p className="text-[13.5px] text-[#64748B] mt-1">Track, structure, and export adverse event reports for regulatory submission.</p>
+        <p className="text-[13.5px] text-[#64748B] mt-1 max-w-2xl">Track, structure and review adverse event reports, identify potential safety patterns, and prepare cases for regulatory review.</p>
+          </div>
+          <div className="flex items-center gap-2 text-[11px] text-[#64748B] rounded-xl border px-3 py-2 bg-white" style={{borderColor:C.border}}><Cloud size={14} style={{color:C.emeraldDeep}}/> Local persistence active</div>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
@@ -1369,7 +1387,7 @@ function Dashboard({ history, signalData, onNew, onOpenLog, onOpenDemo, onOpenSi
 
 function KPI({ label, value, icon: Icon, accent, tint, small }) {
   return (
-    <div className="rounded-xl border bg-white p-4 shadow-sm" style={{ borderColor: C.border, borderTop: `3px solid ${accent}` }}>
+    <div className="rounded-xl border bg-white p-4 shadow-sm vigilis-metric vigilis-card-hover" style={{ borderColor: C.border, borderTop: `3px solid ${accent}`, color: accent }}>
       <div className="w-8 h-8 rounded-lg flex items-center justify-center mb-2" style={{ background: tint }}>
         <Icon size={15} style={{ color: accent }} />
       </div>
@@ -1382,7 +1400,7 @@ function KPI({ label, value, icon: Icon, accent, tint, small }) {
 function ActionCard({ onClick, icon: Icon, accent, title, desc, disabled }) {
   return (
     <button onClick={onClick} disabled={disabled}
-      className={"text-left rounded-xl border bg-white p-5 transition shadow-sm " + (disabled ? "opacity-60 cursor-not-allowed" : "hover:-translate-y-0.5")}
+      className={"text-left rounded-xl border bg-white p-5 transition shadow-sm vigilis-card-hover " + (disabled ? "opacity-60 cursor-not-allowed" : "hover:-translate-y-0.5")}
       style={{ borderColor: C.border }}>
       <div className="w-9 h-9 rounded-lg flex items-center justify-center mb-3" style={{ background: `${accent}1A` }}>
         <Icon size={17} style={{ color: accent }} />
@@ -1407,60 +1425,50 @@ function computeDeadline(record, country) {
 }
 
 function LogView({ history, onOpen, onNew, hideNew }) {
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [sort, setSort] = useState("newest");
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return [...history]
+      .filter(r => filter === "all" || (filter === "serious" ? r.isSerious : !r.isSerious))
+      .filter(r => {
+        if (!q) return true;
+        const hay = [r.id, r.patient?.country, r.reporter?.type, ...(r.drugs||[]).map(d=>d.name), ...(r.events||[]).map(e=>`${e.term||""} ${e.description||""}`)].join(" ").toLowerCase();
+        return hay.includes(q);
+      })
+      .sort((a,b) => sort === "newest" ? new Date(b.createdAt)-new Date(a.createdAt) : new Date(a.createdAt)-new Date(b.createdAt));
+  }, [history, query, filter, sort]);
   return (
-    <div className="max-w-3xl mx-auto px-6 py-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-[20px] font-bold" style={{ color: C.indigoDeeper }}>Case log</h1>
-        {!hideNew && (
-          <button onClick={onNew} className="inline-flex items-center gap-1.5 rounded-md text-white px-3.5 py-2 text-[13px] font-medium" style={{ background: C.indigo }}>
-            <Plus size={15} /> New
-          </button>
-        )}
+    <div className="max-w-4xl mx-auto px-6 py-8 vigilis-page">
+      <div className="flex items-end justify-between gap-4 mb-5">
+        <div>
+          <div className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[.14em] px-2 py-1 rounded-full mb-2" style={{background:C.violetSoft,color:C.violetDeep}}><ClipboardList size={11}/> Safety operations</div>
+          <h1 className="text-[22px] font-bold vigilis-title" style={{color:C.indigoDeeper}}>Case log</h1>
+          <p className="text-[13px] text-[#64748B] mt-1">Search, triage and open saved safety reports.</p>
+        </div>
+        {!hideNew && <button onClick={onNew} className="inline-flex items-center gap-1.5 rounded-lg text-white px-3.5 py-2.5 text-[13px] font-semibold shadow-sm" style={{background:C.indigo}}><Plus size={15}/> New case</button>}
+      </div>
+      <div className="rounded-xl border bg-white p-3 mb-4 vigilis-surface" style={{borderColor:C.border}}>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search case ID, medicine, reaction, country…" className="flex-1 rounded-lg border px-3 py-2.5 text-[13px] outline-none" style={{borderColor:C.border}} />
+          <select value={filter} onChange={e=>setFilter(e.target.value)} className="rounded-lg border px-3 py-2.5 text-[13px] bg-white" style={{borderColor:C.border}}><option value="all">All cases</option><option value="serious">Serious only</option><option value="nserious">Not serious</option></select>
+          <select value={sort} onChange={e=>setSort(e.target.value)} className="rounded-lg border px-3 py-2.5 text-[13px] bg-white" style={{borderColor:C.border}}><option value="newest">Newest first</option><option value="oldest">Oldest first</option></select>
+        </div>
       </div>
       {history.length === 0 ? (
-        <div className="rounded-lg border border-dashed px-6 py-10 text-center bg-white/60" style={{ borderColor: C.border }}>
-          <p className="text-[14px] text-[#64748B] mb-4">Nothing logged yet. Your first report takes about three minutes.</p>
-          <button onClick={onNew} className="inline-flex items-center gap-2 rounded-md text-white px-4 py-2 text-[13px] font-medium" style={{ background: C.indigo }}>
-            <Plus size={15} /> Report a case
-          </button>
-        </div>
+        <div className="rounded-xl border border-dashed px-6 py-12 text-center bg-white/70" style={{borderColor:C.border}}><div className="w-11 h-11 rounded-xl mx-auto mb-3 flex items-center justify-center" style={{background:C.violetSoft,color:C.violetDeep}}><ClipboardList size={19}/></div><p className="text-[14px] text-[#64748B] mb-4">Nothing logged yet. Your first report takes about three minutes.</p>{!hideNew&&<button onClick={onNew} className="inline-flex items-center gap-2 rounded-lg text-white px-4 py-2.5 text-[13px] font-semibold" style={{background:C.indigo}}><Plus size={15}/> Report a case</button>}</div>
+      ) : filtered.length === 0 ? (
+        <div className="rounded-xl border bg-white p-10 text-center" style={{borderColor:C.border}}><p className="font-semibold text-[14px]">No matching cases</p><p className="text-[12.5px] text-[#94A3B8] mt-1">Try a different search or filter.</p></div>
       ) : (
-        <div className="space-y-2.5">
-          {history.map((r) => {
-            const c = COUNTRIES.find((x) => x.code === r.patient.country) || COUNTRIES[0];
-            return (
-              <button key={r.id} onClick={() => onOpen(r.id)}
-                className="w-full text-left rounded-lg border bg-white px-4 py-3.5 hover:-translate-y-0.5 transition flex items-center gap-3 shadow-sm"
-                style={{ borderColor: C.border }}>
-                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: r.isSerious ? C.rose : C.emeraldDeep }} />
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-[14px] truncate flex items-center gap-1.5">
-                    {(r.drugs || []).map((d) => d.name).filter(Boolean).join(" + ") || "Unnamed medicine"}
-                    {r.source === "literature" && (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0" style={{ background: C.violetSoft, color: C.violetDeep }}>
-                        <BookOpen size={9} /> Literature
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-[12.5px] text-[#94A3B8] truncate">{(r.events || []).map((e) => e.term || e.description).filter(Boolean).join(" · ") || "No description"}</div>
-                </div>
-                <div className="text-right shrink-0">
-                  <div className="font-mono text-[11px] text-[#64748B]">{new Date(r.createdAt).toLocaleDateString()}</div>
-                  <div className="font-mono text-[10px] uppercase tracking-wide text-[#94A3B8]">{c.authority}</div>
-                  {(() => {
-                    const dl = computeDeadline(r, c);
-                    if (!dl || (!dl.overdue && !dl.urgent)) return null;
-                    return (
-                      <div className="mt-0.5 text-[10px] font-semibold" style={{ color: dl.overdue ? C.rose : C.amberDeep }}>
-                        {dl.overdue ? "Overdue" : `${dl.remaining}d left`}
-                      </div>
-                    );
-                  })()}
-                </div>
-                <ChevronRight size={16} className="text-[#CBD5E1] shrink-0" />
-              </button>
-            );
-          })}
+        <div className="space-y-2.5"><div className="text-[11px] text-[#94A3B8] px-1">Showing {filtered.length} of {history.length} case{history.length===1?"":"s"}</div>
+          {filtered.map(r=>{const c=COUNTRIES.find(x=>x.code===r.patient.country)||COUNTRIES[0];const dl=computeDeadline(r,c);return <button key={r.id} onClick={()=>onOpen(r.id)} className="w-full text-left rounded-xl border bg-white px-4 py-3.5 flex items-center gap-3 vigilis-card-hover" style={{borderColor:C.border}}>
+            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{background:r.isSerious?C.rose:C.emeraldDeep}}/>
+            <div className="flex-1 min-w-0"><div className="font-semibold text-[14px] truncate flex items-center gap-1.5">{(r.drugs||[]).map(d=>d.name).filter(Boolean).join(" + ")||"Unnamed medicine"}{r.source==="literature"&&<span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0" style={{background:C.violetSoft,color:C.violetDeep}}><BookOpen size={9}/> Literature</span>}</div>
+              <div className="text-[12px] text-[#94A3B8] truncate mt-0.5">{(r.events||[]).map(e=>e.term||e.description).filter(Boolean).join(" · ")||"No description"}</div>
+              <div className="flex items-center gap-2 mt-1.5"><span className="text-[10px] font-bold uppercase tracking-wide" style={{color:r.isSerious?C.rose:C.emeraldDeep}}>{r.isSerious?"Serious":"Not serious"}</span>{dl&&<span className="text-[10px] text-[#94A3B8]">· {dl.overdue?`Overdue ${Math.abs(dl.remaining)}d`:dl.remaining+"d remaining"}</span>}</div>
+            </div><div className="text-right shrink-0 hidden sm:block"><div className="font-mono text-[11px] text-[#64748B]">{new Date(r.createdAt).toLocaleDateString()}</div><div className="font-mono text-[10px] uppercase tracking-wide text-[#94A3B8]">{c.authority}</div></div><ChevronRight size={15} className="text-[#CBD5E1] shrink-0"/>
+          </button>})}
         </div>
       )}
     </div>
@@ -2827,30 +2835,21 @@ function ReviewStep({ form, country, isSerious, seriousnessCount, similarCases }
 function DeadlineCountdown({ record, country }) {
   const windowText = record.isSerious ? country.serious : country.nonSerious;
   const match = windowText.match(/^(\d+)/);
+  const [, refresh] = useState(0);
+  useEffect(() => { const id = setInterval(() => refresh(n => n + 1), 60000); return () => clearInterval(id); }, []);
   if (!match) return null;
   const totalDays = parseInt(match[1], 10);
-  const elapsedMs = Date.now() - new Date(record.createdAt).getTime();
-  const elapsedDays = elapsedMs / 86400000;
+  const elapsedDays = Math.max(0, Date.now() - new Date(record.createdAt).getTime()) / 86400000;
   const remaining = Math.ceil(totalDays - elapsedDays);
   const overdue = remaining < 0;
-  const pct = Math.max(0, Math.min(100, (elapsedDays / totalDays) * 100));
   const urgent = !overdue && remaining <= 3;
+  const pct = Math.max(0, Math.min(100, (elapsedDays / totalDays) * 100));
   const color = overdue ? C.rose : urgent ? C.amberDeep : C.emeraldDeep;
-
-  return (
-    <div className="mt-3 rounded-lg border p-3" style={{ borderColor: overdue ? C.roseBorder : C.border, background: overdue ? C.roseSoft : "#FAFAFC" }}>
-      <div className="flex items-center justify-between mb-1.5">
-        <span className="text-[12px] font-semibold flex items-center gap-1.5" style={{ color }}>
-          <CalendarClock size={13} />
-          {overdue ? `Overdue by ${Math.abs(remaining)} day${Math.abs(remaining) === 1 ? "" : "s"}` : `${remaining} of ${totalDays} days remaining`}
-        </span>
-      </div>
-      <div className="h-1.5 rounded-full bg-[#EEF0F5] overflow-hidden">
-        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
-      </div>
-      <p className="text-[11px] text-[#94A3B8] mt-1.5">Based on when this case was logged — always verify against your organization's actual submission timestamp and SOP.</p>
-    </div>
-  );
+  return <div className="mt-4 rounded-xl border p-4" style={{borderColor: overdue ? C.roseBorder : urgent ? C.amberBorder : C.border, background: overdue ? C.roseSoft : urgent ? C.amberSoft : "#FAFAFC"}}>
+    <div className="flex items-center justify-between gap-3 mb-2"><span className="text-[12px] font-semibold flex items-center gap-1.5" style={{color}}><CalendarClock size={14}/> {overdue ? `Overdue by ${Math.abs(remaining)} day${Math.abs(remaining)===1?"":"s"}` : `${remaining} of ${totalDays} days remaining`}</span><span className="text-[10px] font-bold uppercase tracking-wider rounded-full px-2 py-1" style={{color,background:"white",border:`1px solid ${overdue?C.roseBorder:urgent?C.amberBorder:C.emeraldBorder}`}}>{overdue?"Action required":urgent?"Due soon":"On track"}</span></div>
+    <div className="h-2 rounded-full bg-[#EEF0F5] overflow-hidden"><div className="h-full rounded-full transition-all duration-500" style={{width:`${pct}%`,background:color}}/></div>
+    <p className="text-[10.5px] text-[#94A3B8] mt-2 leading-relaxed">Based on the case logged time and configured country window. Verify the actual submission timestamp and your organization's SOP before filing.</p>
+  </div>;
 }
 
 function DetailView({ record, onBack, onDelete, onDownload, onDownloadE2B, onSaveCausality, onSaveMeddra }) {
@@ -2860,7 +2859,7 @@ function DetailView({ record, onBack, onDelete, onDownload, onDownloadE2B, onSav
   const drugNames = (record.drugs || []).map((d) => d.name).filter(Boolean).join(" + ") || "Unnamed medicine(s)";
   return (
     <div className="min-h-screen print:bg-white" style={{ background: C.bg }}>
-      <div className="max-w-2xl mx-auto px-6 py-10">
+      <div className="max-w-3xl mx-auto px-6 py-8 vigilis-page">
         <div className="flex items-center justify-between mb-6 print:hidden">
           <button onClick={onBack} className="inline-flex items-center gap-1.5 text-[13px] text-[#64748B]"><ArrowLeft size={15} /> Back</button>
           <div className="flex gap-2">
@@ -2871,7 +2870,7 @@ function DetailView({ record, onBack, onDelete, onDownload, onDownloadE2B, onSav
           </div>
         </div>
         <p className="text-[10.5px] text-[#94A3B8] -mt-4 mb-6 print:hidden">The E2B-style export is a simplified illustration of the ICH E2B(R3) structure, not a validated regulatory submission file.</p>
-        <div className="bg-white rounded-xl border p-8 print:border-none print:p-0 shadow-sm print:shadow-none" style={{ borderColor: C.border }}>
+        <div className="bg-white rounded-2xl border p-8 vigilis-detail-card print:border-none print:p-0 shadow-sm print:shadow-none vigilis-surface" style={{ borderColor: C.border }}>
           <div className="flex items-center justify-between mb-1">
             <div className="font-mono text-[11px] uppercase tracking-[0.13em] text-[#64748B]">{record.id}</div>
             <span className="font-mono text-[11px] uppercase tracking-wide px-2 py-0.5 rounded"
@@ -2881,6 +2880,12 @@ function DetailView({ record, onBack, onDelete, onDownload, onDownloadE2B, onSav
           </div>
           <h1 className="text-[22px] font-bold mb-1" style={{ color: C.indigoDeeper }}>{drugNames}</h1>
           <p className="text-[12.5px] text-[#94A3B8] mb-3">Logged {new Date(record.createdAt).toLocaleString()}</p>
+           <div className="flex flex-wrap gap-2 mb-5">
+             <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10.5px] font-bold" style={{background:record.isSerious?C.roseSoft:C.emeraldSoft,color:record.isSerious?C.rose:C.emeraldDeeper}}>{record.isSerious?<ShieldAlert size={11}/>:<ShieldCheck size={11}/>} {record.isSerious?"Serious case":"Non-serious case"}</span>
+             <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10.5px] font-semibold" style={{background:C.violetSoft,color:C.violetDeep}}><FileText size={11}/> {record.events?.length||0} reaction{(record.events?.length||0)===1?"":"s"}</span>
+             <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10.5px] font-semibold" style={{background:C.skySoft,color:C.skyDeep}}><Pill size={11}/> {record.drugs?.length||0} medicine{(record.drugs?.length||0)===1?"":"s"}</span>
+             {record.source==="literature"&&<span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10.5px] font-semibold" style={{background:C.amberSoft,color:C.amberDeep}}><BookOpen size={11}/> Literature sourced</span>}
+           </div>
 
           {record.source === "literature" && (
             <div className="rounded-lg border p-3 mb-6 flex gap-2.5" style={{ background: C.violetSoft, borderColor: C.violetBorder }}>
