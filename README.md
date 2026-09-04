@@ -1,45 +1,27 @@
-# Vigilis – Pharmacovigilance Prototype
+# Vigilis — AI-Native Pharmacovigilance & Safety Intelligence Platform
 
-Vigilis is a React/Vite pharmacovigilance prototype with a secure Vercel server-side AI proxy.
+Enterprise-style demonstration/portfolio product inspired by the workflow concepts found in modern PV platforms such as Veeva Safety Suite and Oracle Health Sciences Safety/Argus.
 
-## Project structure
+## Highlights
+- Executive PV dashboard and operational work queues
+- ICSR intake, structured case management, medical review and QC
+- AI/agentic workflow simulator: Intake, Coding, Duplicate, Review, Narrative, Submission, Literature and Signal agents
+- Human-in-the-loop approvals with explainability and confidence
+- MedDRA-style coding stand-in (not a licensed MedDRA dictionary)
+- Duplicate detection, causality/seriousness decision support
+- Submission readiness, E2B(R3)-style export simulation and acknowledgement tracking
+- Literature triage and signal management
+- PRR/ROR/chi-square screening with signal investigations
+- Aggregate report workspace and safety document hub
+- RBAC/admin concepts, audit trail, configurable workflow concepts
+- Responsive enterprise UI with command palette and AI Copilot
 
-```text
-.
-├── api/
-│   └── ai.js
-├── src/
-│   ├── App.jsx
-│   └── main.jsx
-├── .env.example
-├── .gitignore
-├── index.html
-├── package.json
-├── vercel.json
-└── vite.config.js
-```
+## Run
+npm install
+npm run dev
 
-## Important Vercel fix
+## Deploy
+Push the project root to GitHub and import the repository into Vercel. Add `ANTHROPIC_API_KEY` as a Vercel Environment Variable if live AI is desired.
 
-`vercel.json` is intentionally empty. Vercel automatically detects JavaScript files in the root `api/` directory as Serverless Functions. The AI function sets its own `maxDuration` in `api/ai.js`.
-
-## Deploy to GitHub + Vercel
-
-1. Upload the **contents of this folder** to the root of your GitHub repository. `package.json`, `api/`, and `src/` must be directly visible at repository root.
-2. Import the GitHub repository into Vercel.
-3. Framework preset: Vite (Vercel should detect it automatically).
-4. Build command: `npm run build`.
-5. Output directory: `dist`.
-6. Add environment variable `ANTHROPIC_API_KEY` in Vercel. Never put the real key in GitHub.
-7. Optional: add `ANTHROPIC_MODEL` if you want to override the default model.
-8. Deploy.
-
-## AI architecture
-
-Browser → `/api/ai` → Anthropic API
-
-The Anthropic API key is read only by the server-side Vercel Function.
-
-## Security
-
-This is a prototype and is not validated GxP/regulatory submission software. Do not enter real patient-identifiable or other sensitive production data without appropriate security, validation, access control, audit trail, retention, and regulatory controls.
+## Important
+This is an advanced demonstration/portfolio foundation, not a validated GxP system and not a certified replacement for Veeva Vault Safety or Oracle Argus. Production deployment would require validated infrastructure, controlled authentication/RBAC, database controls, immutable audit trail, e-signatures, change control, CSV/CSA, privacy/security controls, licensed MedDRA/WHODrug, regulatory gateway connectivity, monitoring, backup/DR and formal validation.

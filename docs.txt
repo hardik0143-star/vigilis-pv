@@ -1,0 +1,24 @@
+VIGILIS ENTERPRISE AI — PRODUCT BLUEPRINT
+
+Purpose
+This build upgrades the supplied basic Vigilis prototype into an enterprise-style demonstration foundation for end-to-end pharmacovigilance and safety intelligence.
+
+Reference model
+The product structure takes inspiration from modern safety-suite patterns: unified case management, intake through submissions, safety content, advanced analytics, signal detection, workflow and AI agents. It is not a copy of or replacement for Veeva Vault Safety or Oracle Argus.
+
+AI / Agentic operating model
+1. Case Intake Agent — extracts structured data from narrative/source documents and identifies missing fields.
+2. Coding Agent — suggests terminology mappings and escalates ambiguity.
+3. Duplicate Detection Agent — prioritizes possible duplicate cases.
+4. Medical Review Agent — prepares evidence summaries for seriousness/expectedness/causality; human decision required.
+5. Narrative Agent — prepares traceable narrative drafts.
+6. Submission Agent — validates and assembles packets; human release required.
+7. Literature Agent — screens/ranks evidence and proposes ICSR candidates.
+8. Signal Surveillance Agent — monitors statistical/contextual patterns and proposes investigations.
+9. Vigilis Copilot — conversational interface for authorized safety operations.
+
+Human-in-the-loop controls
+Agents can recommend, draft, classify, validate and route. Consequential medical and regulatory decisions remain explicitly gated. Production would require identity, RBAC, immutable audit, validation, privacy/security, licensed dictionaries, gateway certification and formal CSV/CSA.
+
+Prototype data
+All displayed data is fictional demonstration data. MedDRA terminology is represented only by demo concepts and must not be treated as licensed MedDRA content.
